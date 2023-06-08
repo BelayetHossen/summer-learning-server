@@ -25,7 +25,7 @@ async function run() {
         const usersCollection = client.db('summerLearningDB').collection('users')
 
 
-        // Save user in DB
+        // Save user to DB
         app.post('/addUser', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
@@ -36,6 +36,12 @@ async function run() {
             const result = await usersCollection.insertOne(user);
             res.send(result);
         });
+
+        // Get all users
+        app.get('/allUsers', async (req, res) => {
+            const result = await usersCollection.find().toArray()
+            res.send(result)
+        })
 
 
 
