@@ -29,7 +29,6 @@ async function run() {
         // Get auth user
         app.get('/getAuth/:email', async (req, res) => {
             const email = req.params.email
-            console.log(email);
             const query = { email: email }
             const result = await usersCollection.findOne(query)
             res.send(result)
@@ -101,6 +100,42 @@ async function run() {
             const result = await classCollection.insertOne(classData);
             res.send(result);
         });
+
+        //get all classes for instractor
+        app.get('/getMyClass/:email', async (req, res) => {
+            const email = req.params.email
+            if (!email) {
+                res.send([])
+            }
+            const query = { instractor_email: email }
+            const result = await classCollection.find(query).toArray()
+            res.send(result)
+        })
+
+        //edit my class a single class data load for edit
+        app.get('/mySingleClass/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) };
+                const result = await classCollection.findOne(query);
+                res.json(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send('Internal Server Error');
+            }
+        });
+        //update my class a single class data update
+        app.put('/mySingleClass/:id', async (req, res) => {
+            const updateData = req.body
+
+            const filter = { _id: new ObjectId(req.params.id) }
+            const options = { upsert: true }
+            const updateDoc = {
+                $set: updateData,
+            }
+            const result = await classCollection.updateOne(filter, updateDoc, options)
+            res.send(result)
+        })
 
 
 
