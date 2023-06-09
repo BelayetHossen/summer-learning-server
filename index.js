@@ -23,7 +23,17 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         const usersCollection = client.db('summerLearningDB').collection('users')
+        const classCollection = client.db('summerLearningDB').collection('classes')
 
+
+        // Get auth user
+        app.get('/getAuth/:email', async (req, res) => {
+            const email = req.params.email
+            console.log(email);
+            const query = { email: email }
+            const result = await usersCollection.findOne(query)
+            res.send(result)
+        })
 
         // Save user to DB
         app.post('/addUser', async (req, res) => {
@@ -43,6 +53,54 @@ async function run() {
             res.send(result)
         })
 
+        // update user role to admin
+        app.patch('/updateRoleAdmin/:id', async (req, res) => {
+            const id = req.params.id
+            const role = req.body.role
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    role: role,
+                },
+            }
+            const update = await usersCollection.updateOne(query, updateDoc)
+            res.send(update)
+        })
+        // update user role to student
+        app.patch('/updateRoleStudent/:id', async (req, res) => {
+            const id = req.params.id
+            const role = req.body.role
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    role: role,
+                },
+            }
+            const update = await usersCollection.updateOne(query, updateDoc)
+            res.send(update)
+        })
+        // update user role to instractor
+        app.patch('/updateRoleInstractor/:id', async (req, res) => {
+            const id = req.params.id
+            const role = req.body.role
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    role: role,
+                },
+            }
+            const update = await usersCollection.updateOne(query, updateDoc)
+            res.send(update)
+        })
+
+
+
+        // Save class to DB
+        app.post('/addClass', async (req, res) => {
+            const classData = req.body;
+            const result = await classCollection.insertOne(classData);
+            res.send(result);
+        });
 
 
 
