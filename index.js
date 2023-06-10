@@ -78,8 +78,8 @@ async function run() {
             const update = await usersCollection.updateOne(query, updateDoc)
             res.send(update)
         })
-        // update user role to instractor
-        app.patch('/updateRoleInstractor/:id', async (req, res) => {
+        // update user role to instructor
+        app.patch('/updateRoleInstructor/:id', async (req, res) => {
             const id = req.params.id
             const role = req.body.role
             const query = { _id: new ObjectId(id) }
@@ -101,13 +101,13 @@ async function run() {
             res.send(result);
         });
 
-        //get all classes for instractor
+        //get all classes for instructor
         app.get('/getMyClass/:email', async (req, res) => {
             const email = req.params.email
             if (!email) {
                 res.send([])
             }
-            const query = { instractor_email: email }
+            const query = { instructor_email: email }
             const result = await classCollection.find(query).toArray()
             res.send(result)
         })
@@ -134,6 +134,36 @@ async function run() {
                 $set: updateData,
             }
             const result = await classCollection.updateOne(filter, updateDoc, options)
+            res.send(result)
+        })
+
+        // delete a class
+        app.delete('/deleteClass/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await classCollection.deleteOne(query)
+            res.send(result)
+        })
+
+        // Get all classes
+        app.get('/allClasses', async (req, res) => {
+            const result = await classCollection.find().toArray()
+            res.send(result)
+        })
+        // Get instuctor Classs
+        app.get('/instuctorClasss/:email', async (req, res) => {
+            const email = req.params.email
+            if (!email) {
+                res.send([])
+            }
+            const query = { instructor_email: email }
+            const result = await classCollection.find(query).toArray()
+            res.send(result)
+        });
+
+        // Get all instuctors
+        app.get('/allInstuctors', async (req, res) => {
+            const result = await usersCollection.find().toArray()
             res.send(result)
         })
 
