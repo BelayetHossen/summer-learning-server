@@ -145,9 +145,16 @@ async function run() {
             res.send(result)
         })
 
-        // Get all classes
-        app.get('/allClasses', async (req, res) => {
+        // Get all classes for admin
+        app.get('/allClassesAdmin', async (req, res) => {
             const result = await classCollection.find().toArray()
+            res.send(result)
+        })
+
+        // Get all aproved classes
+        app.get('/allClasses', async (req, res) => {
+            const query = { status: "Aproved" }
+            const result = await classCollection.find(query).toArray()
             res.send(result)
         })
         // Get instuctor Classs
@@ -165,6 +172,52 @@ async function run() {
         app.get('/allInstuctors', async (req, res) => {
             const result = await usersCollection.find().toArray()
             res.send(result)
+        })
+
+        // update class status approved
+        app.patch('/updateClassApproved/:id', async (req, res) => {
+            const id = req.params.id
+            const status = req.body.status
+            const denied_for = req.body.denied_for
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    status: status,
+                    denied_for: denied_for,
+                },
+            }
+            const update = await classCollection.updateOne(query, updateDoc)
+            res.send(update)
+        })
+        // update class status pending
+        app.patch('/updateClassPending/:id', async (req, res) => {
+            const id = req.params.id
+            const status = req.body.status
+            const denied_for = req.body.denied_for
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    status: status,
+                    denied_for: denied_for,
+                },
+            }
+            const update = await classCollection.updateOne(query, updateDoc)
+            res.send(update)
+        })
+        // update class status Denied
+        app.patch('/updateClassDenied/:id', async (req, res) => {
+            const id = req.params.id
+            const status = req.body.status
+            const denied_for = req.body.denied_for
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    status: status,
+                    denied_for: denied_for,
+                },
+            }
+            const update = await classCollection.updateOne(query, updateDoc)
+            res.send(update)
         })
 
 
