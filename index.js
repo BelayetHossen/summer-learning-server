@@ -153,10 +153,10 @@ async function run() {
 
         // Get all aproved classes
         app.get('/allClasses', async (req, res) => {
-            const query = { status: "Aproved" }
-            const result = await classCollection.find(query).toArray()
-            res.send(result)
-        })
+            const query = { status: "Approved" };
+            const result = await classCollection.find(query).toArray();
+            res.send(result);
+        });
         // Get instuctor Classs
         app.get('/instuctorClasss/:email', async (req, res) => {
             const email = req.params.email
@@ -166,6 +166,17 @@ async function run() {
             const query = { instructor_email: email }
             const result = await classCollection.find(query).toArray()
             res.send(result)
+        });
+        // Get instuctor Classs for frontend
+        app.get('/instuctorClasssFront/:email', async (req, res) => {
+            const email = req.params.email;
+            if (!email) {
+                res.send([]);
+                return;
+            }
+            const query = { instructor_email: email, status: "Approved" };
+            const result = await classCollection.find(query).toArray();
+            res.send(result);
         });
 
         // Get all instuctors
@@ -219,6 +230,70 @@ async function run() {
             const update = await classCollection.updateOne(query, updateDoc)
             res.send(update)
         })
+
+        // select class for student
+        app.patch('/selectClass/:userId', async (req, res) => {
+            try {
+                const userId = req.params.userId;
+                const classId = req.body.classId;
+
+                if (!userId || !classId) {
+                    return res.status(400).json({ error: 'Missing required fields' });
+                }
+
+                const userQuery = { _id: new ObjectId(userId) };
+                const classQuery = { _id: new ObjectId(classId) };
+
+                const user = await usersCollection.findOne(userQuery);
+                const foundedClass = await classCollection.findOne(classQuery);
+
+                if (!user) {
+                    return res.status(404).json({ error: 'User not found' });
+                }
+
+                if (!foundedClass) {
+                    return res.status(404).json({ error: 'Class not found' });
+                }
+                const oldClasses = user.selectedClass;
+
+                const updatedClasses = [...oldClasses, classId];
+
+                const updateUser = {
+                    $set: {
+                        selectedClass: updatedClasses,
+                    },
+                };
+
+                const userResult = await usersCollection.updateOne(userQuery, updateUser);
+                res.send(userResult);
+            } catch (error) {
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+
+        // Get student selected Classs
+        app.get('/getSelectedClass/:email', async (req, res) => {
+            const email = req.params.email;
+            if (!email) {
+                res.send([]);
+                return;
+            }
+
+            const userQuery = { email: email };
+            const user = await usersCollection.findOne(userQuery);
+
+            if (!user || !user.selectedClass || user.selectedClass.length === 0) {
+                res.send([]);
+                return;
+            }
+
+            const classIds = user.selectedClass;
+
+            const query = { _id: { $in: classIds.map(classId => new ObjectId(classId)) } };
+            const result = await classCollection.find(query).toArray();
+            console.log(result);
+            res.send(result);
+        });
 
 
 
