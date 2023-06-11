@@ -24,6 +24,7 @@ async function run() {
     try {
         const usersCollection = client.db('summerLearningDB').collection('users')
         const classCollection = client.db('summerLearningDB').collection('classes')
+        const selectedClassCollection = client.db('summerLearningDB').collection('selectedClasses')
 
 
         // Get auth user
@@ -145,6 +146,7 @@ async function run() {
             res.send(result)
         })
 
+
         // Get all classes for admin
         app.get('/allClassesAdmin', async (req, res) => {
             const result = await classCollection.find().toArray()
@@ -232,40 +234,37 @@ async function run() {
         })
 
         // select class for student
-        app.patch('/selectClass/:userId', async (req, res) => {
+        app.post('/selectClass/:classId', async (req, res) => {
             try {
-                const userId = req.params.userId;
-                const classId = req.body.classId;
+                const classId = req.params.classId;
+                const userEmail = req.body.userEmail;
 
-                if (!userId || !classId) {
+                if (!userEmail || !classId) {
                     return res.status(400).json({ error: 'Missing required fields' });
                 }
 
-                const userQuery = { _id: new ObjectId(userId) };
-                const classQuery = { _id: new ObjectId(classId) };
+                const classData = { userEmail: userEmail, classId: classId };
 
-                const user = await usersCollection.findOne(userQuery);
-                const foundedClass = await classCollection.findOne(classQuery);
-
-                if (!user) {
-                    return res.status(404).json({ error: 'User not found' });
+                const existingClass = await selectedClassCollection.findOne(classData);
+                if (existingClass) {
+                    return res.send({ message: 'Class already Added, select another' });
                 }
 
-                if (!foundedClass) {
-                    return res.status(404).json({ error: 'Class not found' });
-                }
-                const oldClasses = user.selectedClass;
-
-                const updatedClasses = [...oldClasses, classId];
-
-                const updateUser = {
-                    $set: {
-                        selectedClass: updatedClasses,
-                    },
-                };
-
-                const userResult = await usersCollection.updateOne(userQuery, updateUser);
-                res.send(userResult);
+                const result = await selectedClassCollection.insertOne(classData);
+                res.send(result);
+            } catch (error) {
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+        // delete a Selected Class
+        app.delete('/deleteSelectedClass/:userEmail/:classId', async (req, res) => {
+            try {
+                const userEmail = req.params.userEmail;
+                const classId = req.params.classId;
+                console.log(userEmail, classId);
+                const query = { classId: classId, userEmail: userEmail }
+                const result = await selectedClassCollection.deleteOne(query)
+                res.send(result)
             } catch (error) {
                 res.status(500).json({ error: 'Internal server error' });
             }
@@ -273,27 +272,29 @@ async function run() {
 
         // Get student selected Classs
         app.get('/getSelectedClass/:email', async (req, res) => {
-            const email = req.params.email;
-            if (!email) {
-                res.send([]);
-                return;
+            try {
+                const email = req.params.email;
+
+                if (!email) {
+                    res.send([]);
+                    return;
+                }
+
+                const query = { userEmail: email };
+                const result = await selectedClassCollection.find(query).toArray();
+                const classIds = result.map(({ classId }) => classId);
+
+                const filter = { _id: { $in: classIds.map(id => new ObjectId(id)) } };
+                const final = await classCollection.find(filter).toArray();
+
+                res.send(final);
+            } catch (error) {
+                res.status(500).json({ error: 'Internal server error' });
             }
-
-            const userQuery = { email: email };
-            const user = await usersCollection.findOne(userQuery);
-
-            if (!user || !user.selectedClass || user.selectedClass.length === 0) {
-                res.send([]);
-                return;
-            }
-
-            const classIds = user.selectedClass;
-
-            const query = { _id: { $in: classIds.map(classId => new ObjectId(classId)) } };
-            const result = await classCollection.find(query).toArray();
-            console.log(result);
-            res.send(result);
         });
+
+
+
 
 
 
