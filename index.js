@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config()
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const stripe = require("stripe")(process.env.PAYMENT_SECRET);
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -25,6 +26,37 @@ async function run() {
         const usersCollection = client.db('summerLearningDB').collection('users')
         const classCollection = client.db('summerLearningDB').collection('classes')
         const selectedClassCollection = client.db('summerLearningDB').collection('selectedClasses')
+        const paymentCollection = client.db('summerLearningDB').collection('payments')
+        const enrolledCollection = client.db('summerLearningDB').collection('enrolledClass')
+
+        // create pament
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
+        // payment info send to DB
+        app.post('/payments/:deleteId', async (req, res) => {
+            const payment = req.body;
+            const deleteId = req.params.deleteId;
+            const insertResult = await paymentCollection.insertOne(payment);
+
+            const query = { classId: deleteId }
+            const deleteResult = await selectedClassCollection.deleteOne(query)
+
+            res.send({ insertResult, deleteResult });
+        })
+
+
 
 
         // Get auth user
@@ -52,6 +84,22 @@ async function run() {
             const result = await usersCollection.find().toArray()
             res.send(result)
         })
+        // Get single instructor
+        app.get('/instructor/:email', async (req, res) => {
+            try {
+                const email = req.params.email;
+                const filter = { email: email };
+                const result = await usersCollection.findOne(filter);
+
+                if (result) {
+                    res.send(result);
+                } else {
+                    res.status(404).send('Instructor not found');
+                }
+            } catch (error) {
+                res.status(500).send('Internal server error');
+            }
+        });
 
         // update user role to admin
         app.patch('/updateRoleAdmin/:id', async (req, res) => {
@@ -183,9 +231,30 @@ async function run() {
 
         // Get all instuctors
         app.get('/allInstuctors', async (req, res) => {
-            const result = await usersCollection.find().toArray()
+            const filter = { role: "Instructor" };
+            const result = await usersCollection.find(filter).toArray()
             res.send(result)
         })
+        // Get all popular class
+        app.get('/popularClass', async (req, res) => {
+            try {
+                const query = { status: "Approved", enrolled: { $gt: 0 } };
+                const result = await classCollection.find(query).sort({ enrolled: -1 }).toArray();
+                res.send(result);
+            } catch (error) {
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+        // Get all popular Instructor
+        app.get('/popularInstructor', async (req, res) => {
+            try {
+                const query = { role: "Instructor", students: { $gt: 0 } };
+                const result = await usersCollection.find(query).sort({ students: -1 }).toArray();
+                res.send(result);
+            } catch (error) {
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
 
         // update class status approved
         app.patch('/updateClassApproved/:id', async (req, res) => {
@@ -261,7 +330,6 @@ async function run() {
             try {
                 const userEmail = req.params.userEmail;
                 const classId = req.params.classId;
-                console.log(userEmail, classId);
                 const query = { classId: classId, userEmail: userEmail }
                 const result = await selectedClassCollection.deleteOne(query)
                 res.send(result)
@@ -279,14 +347,11 @@ async function run() {
                     res.send([]);
                     return;
                 }
-
                 const query = { userEmail: email };
                 const result = await selectedClassCollection.find(query).toArray();
                 const classIds = result.map(({ classId }) => classId);
-
                 const filter = { _id: { $in: classIds.map(id => new ObjectId(id)) } };
                 const final = await classCollection.find(filter).toArray();
-
                 res.send(final);
             } catch (error) {
                 res.status(500).json({ error: 'Internal server error' });
